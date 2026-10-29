@@ -1,11 +1,11 @@
-
+```html
 <!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Valet de Cœur, association suisse de transport et d'accompagnement de personnes.">
-  <title>Valet de Cœur | Transport et accompagnement</title>
+  <title>Valet de Cœur | Réservation de transport</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -22,14 +22,14 @@
     }
     .logo { font-size: 25px; font-weight: 800; color: #173f75; }
     .hero {
-      padding: 85px 7%;
+      padding: 65px 7%;
       text-align: center;
       background: linear-gradient(135deg, #173f75, #2478a8);
       color: white;
     }
     .hero h1 { font-size: clamp(34px, 5vw, 54px); line-height: 1.15; }
     .hero p { max-width: 680px; margin: 20px auto; font-size: 19px; }
-    main { max-width: 1000px; margin: auto; padding: 45px 22px; }
+    main { max-width: 1000px; margin: auto; padding: 35px 22px; }
     .card {
       background: white;
       padding: 28px;
@@ -38,6 +38,29 @@
       box-shadow: 0 5px 20px #172f5010;
     }
     h2 { color: #173f75; }
+    form { display: grid; gap: 16px; }
+    label { display: block; font-weight: 700; margin-bottom: 5px; }
+    input, select {
+      width: 100%;
+      padding: 13px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 16px;
+      background: white;
+    }
+    button {
+      padding: 15px 20px;
+      border: 0;
+      border-radius: 9px;
+      background: #173f75;
+      color: white;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .6; cursor: wait; }
+    #resultat { font-weight: 700; overflow-wrap: anywhere; }
+    .note { font-size: 14px; color: #526078; }
     footer {
       text-align: center;
       padding: 25px;
@@ -54,8 +77,8 @@
   <section class="hero">
     <h1>Le transport avec le cœur</h1>
     <p>
-      Bienvenue chez Valet de Cœur, une association dédiée
-      au transport et à l'accompagnement des personnes.
+      Une association dédiée au transport et à l'accompagnement
+      des personnes, avec bienveillance.
     </p>
   </section>
 
@@ -64,30 +87,137 @@
       <h2>Notre association</h2>
       <p>
         Valet de Cœur s'engage à faciliter les déplacements
-        et à offrir un accompagnement humain, bienveillant
-        et adapté aux besoins de chacun.
+        et à offrir un accompagnement humain et bienveillant.
       </p>
     </section>
 
     <section class="card">
-      <h2>Réservation de transport</h2>
-      <p>
-        Pour organiser un déplacement, contactez notre
-        association afin de connaître les modalités de réservation.
-      </p>
+      <h2>Réserver un transport</h2>
+      <p>Complétez les informations ci-dessous pour envoyer votre demande.</p>
+
+      <form id="reservationForm">
+        <div>
+          <label for="name">Nom et prénom *</label>
+          <input id="name" name="name" maxlength="120" autocomplete="name" required>
+        </div>
+
+        <div>
+          <label for="phone">Téléphone *</label>
+          <input id="phone" name="phone" type="tel" maxlength="40"
+                 autocomplete="tel" required>
+        </div>
+
+        <div>
+          <label for="pickup">Adresse de départ *</label>
+          <input id="pickup" name="pickup" maxlength="300" required>
+        </div>
+
+        <div>
+          <label for="destination">Destination *</label>
+          <input id="destination" name="destination" maxlength="300" required>
+        </div>
+
+        <div>
+          <label for="passengers">Nombre de passagers *</label>
+          <select id="passengers" name="passengers" required>
+            <option value="1">1 passager</option>
+            <option value="2">2 passagers</option>
+            <option value="3">3 passagers</option>
+            <option value="4">4 passagers</option>
+            <option value="5">5 passagers</option>
+            <option value="6">6 passagers</option>
+            <option value="7">7 passagers</option>
+            <option value="8">8 passagers</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="scheduled_at">Date et heure du trajet *</label>
+          <input id="scheduled_at" name="scheduled_at" type="datetime-local" required>
+        </div>
+
+        <button id="submitBtn" type="submit">Envoyer ma demande</button>
+        <p class="note">L'envoi constitue une demande de réservation. Attendez la confirmation de l'association avant votre déplacement.</p>
+        <p id="resultat" role="status" aria-live="polite"></p>
+      </form>
     </section>
 
     <section class="card">
       <h2>Nous contacter</h2>
-      <p>
-        Pour toute demande d'information, veuillez contacter
-        directement l'association Valet de Cœur.
-      </p>
+      <p>Pour toute question, contactez directement l'association Valet de Cœur.</p>
     </section>
   </main>
 
-  <footer>
-    © Valet de Cœur — Association suisse
-  </footer>
+  <footer>© Valet de Cœur — Association suisse</footer>
+
+  <script>
+    const form = document.getElementById("reservationForm");
+    const resultat = document.getElementById("resultat");
+    const submitBtn = document.getElementById("submitBtn");
+
+    // URL publique de l'Edge Function Supabase
+    const BOOKING_URL =
+      "https://qkeemlcxzjrsxcbhkdyw.supabase.co/functions/v1/web-booking";
+
+    // Date minimale : maintenant
+    const dateInput = document.getElementById("scheduled_at");
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    dateInput.min = now.toISOString().slice(0, 16);
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      resultat.textContent = "";
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Envoi en cours…";
+
+      const scheduledLocal = new Date(dateInput.value);
+      if (!dateInput.value || Number.isNaN(scheduledLocal.getTime()) ||
+          scheduledLocal.getTime() <= Date.now()) {
+        resultat.textContent = "Veuillez choisir une date future.";
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Envoyer ma demande";
+        return;
+      }
+
+      const reservation = {
+        name: document.getElementById("name").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        pickup: document.getElementById("pickup").value.trim(),
+        destination: document.getElementById("destination").value.trim(),
+        passengers: Number(document.getElementById("passengers").value),
+        scheduled_at: scheduledLocal.toISOString()
+      };
+
+      try {
+        const response = await fetch(BOOKING_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(reservation)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Impossible d'envoyer la demande.");
+        }
+
+        resultat.textContent =
+          "Votre demande a bien été envoyée. L'association doit encore confirmer le transport.";
+        form.reset();
+
+        const resetNow = new Date();
+        resetNow.setMinutes(resetNow.getMinutes() - resetNow.getTimezoneOffset());
+        dateInput.min = resetNow.toISOString().slice(0, 16);
+      } catch (error) {
+        resultat.textContent =
+          error.message || "Erreur de connexion. Veuillez réessayer.";
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Envoyer ma demande";
+      }
+    });
+  </script>
 </body>
 </html>
+```
